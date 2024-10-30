@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<script>
+window.APPLI={};
+
+APPLI.log=function(msg)
+{
+  if(!APPLI.logArea)
+  {
+    APPLI.logArea=document.getElementById('log');
+  }
+  if(msg==null)
+  {
+    APPLI.logArea.textContent='';
+  }
+  else
+  {
+    APPLI.logArea.textContent+=msg+'\n';
+  }
+};
+
+APPLI.hton_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    view.setInt32(i*4, values[i], false);
+  }
+};
+
+APPLI.ntoh_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    values[i]=view.getInt32(i*4, false);
+  }
+};
+
+APPLI.sendBlock=function()
+{
+  for(var i=0; i<APPLI.block.length; ++i)
+  {
+    APPLI.block[i]=i;
+  }
+  APPLI.hton_i32Array(APPLI.block);
+  APPLI.ws.send(APPLI.block);
+  ++APPLI.blockCount;
+};
+
+APPLI.on_ws_message=function(evt)
+{
+  var values=new Int32Array(evt.data);
+  var msg=null;
+  if(values.length!=APPLI.block.length)
+  {
+    msg='received '+values.length+' values in block '+APPLI.blockCount+
+        ' ('+APPLI.block.length+' expected)';
+  }
+  else
+  {
+    APPLI.ntoh_i32Array(values);
+    for(var i=0; i<values.length; ++i)
+    {
+      if(values[i]!=2*i)
+      {
+        msg='received value '+values[i]+' at index '+i+' in block '+
+            APPLI.blockCount+' ('+(2*i)+' expected)';
+        break;
+      }
+    }
+  }
+  if(!msg&&APPLI.blockCount>=4096)
+  {
+    msg='2x'+APPLI.blockCount+' blocks exchanged';
+  }
+  if(msg)
+  {
+    APPLI.log(msg);
+    APPLI.ws.close();
+  } 
+  else
+  {
+    APPLI.sendBlock();
+  }
+};
+
+window.onload=function(evt)
+{
+  // prepare applicative data
+  APPLI.block=new Int32Array(256);
+  APPLI.blockCount=0;
+  // prepare communication channel
+  var host=window.location.hostname;
+  var port=window.location.port;
+  // APPLI.log('host: '+host+'  port: '+port);
+  APPLI.ws=new WebSocket('ws://'+host+':'+port+'/');
+  APPLI.ws.binaryType='arraybuffer'; // use ArrayBuffer for binary reception
+  APPLI.ws.onmessage=APPLI.on_ws_message;
+  APPLI.ws.onopen=function()
+  {
+    APPLI.log('CONNECT');
+    APPLI.sendBlock();
+  };
+  APPLI.ws.onclose=function()
+  {
+    APPLI.log('DISCONNECT');
+  };
+};
+</script>
+</head><body>
+<h2>WebSocket perf page</h2>
+<p>[<a href="/">home</a>]</p>
+<hr>
+<p><b>Log:</b></p>
+<p><pre id="log"></pre></p>
+<hr>
+</body></html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<script>
+window.APPLI={};
+
+APPLI.log=function(msg)
+{
+  if(!APPLI.logArea)
+  {
+    APPLI.logArea=document.getElementById('log');
+  }
+  if(msg==null)
+  {
+    APPLI.logArea.textContent='';
+  }
+  else
+  {
+    APPLI.logArea.textContent+=msg+'\n';
+  }
+};
+
+APPLI.hton_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    view.setInt32(i*4, values[i], false);
+  }
+};
+
+APPLI.ntoh_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    values[i]=view.getInt32(i*4, false);
+  }
+};
+
+APPLI.command=function(name)
+{
+  if(name=='clear')
+  {
+    APPLI.log(null);
+  }
+  else if(name=='quit')
+  {
+    APPLI.ws.send(name);
+  }
+  else if(name=='txt')
+  {
+    APPLI.ws.send('text button clicked');
+  }
+  else if(name=='bin')
+  {
+    var values=new Int32Array(5);
+    for(var i=0; i<values.length; ++i)
+    {
+      values[i]=10*(i+1);
+    }
+    APPLI.hton_i32Array(values);
+    APPLI.ws.send(values);
+  }
+};
+
+APPLI.on_ws_message=function(evt)
+{
+  var data=evt.data;
+  if(data instanceof ArrayBuffer)
+  {
+    var values=new Int32Array(data);
+    APPLI.ntoh_i32Array(values);
+    var msg='ws_bin:';
+    for(var i=0; i<values.length; ++i)
+    {
+      msg+=' '+values[i];
+    }
+    APPLI.log(msg);
+  }
+  else
+  {
+    APPLI.log('ws_txt: <'+data+'>');
+  }
+};
+
+window.onload=function(evt)
+{
+  // prepare communication channel
+  var proto=window.location.protocol=='https:' ? 'wss' : 'ws';
+  var host=window.location.hostname;
+  var port=window.location.port;
+  // APPLI.log('proto: '+proto+'  host: '+host+'  port: '+port);
+  APPLI.ws=new WebSocket(proto+'://'+host+':'+port+'/');
+  APPLI.ws.binaryType='arraybuffer'; // use ArrayBuffer for binary reception
+  APPLI.ws.onmessage=APPLI.on_ws_message;
+  // start communication when channel is ready
+  APPLI.ws.onopen=function()
+  {
+    APPLI.log('CONNECT');
+    APPLI.ws.send('Hello from websocket client!');
+  };
+  // explicitly show when the communication channel is closed
+  APPLI.ws.onclose=function()
+  {
+    APPLI.log('DISCONNECT');
+  };
+};
+</script>
+</head><body>
+<h2>WebSocket application page</h2>
+<p>[<a href="/">home</a>]</p>
+<hr>
+<p><b>Commands:</b></p>
+<p>
+<button onclick="APPLI.command('clear');">&nbsp;clear&nbsp;</button>
+&mdash;
+<button onclick="APPLI.command('quit');">&nbsp;quit&nbsp;</button>
+&mdash;
+<button onclick="APPLI.command('txt');">&nbsp;txt&nbsp;</button>
+&mdash;
+<button onclick="APPLI.command('bin');">&nbsp;bin&nbsp;</button></p>
+<hr>
+<p><b>Log:</b></p>
+<p><pre id="log"></pre></p>
+<hr>
+</body></html>

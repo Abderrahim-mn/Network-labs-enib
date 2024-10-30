@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+#-----------------------------------------------------------------------------
+
+import sys
+import os
+
+# analyse environment variables
+queryString=''
+if os.environ.get('REQUEST_METHOD','')=='POST':
+  remaining=os.environ.get('CONTENT_LENGTH','0')
+  if remaining:
+    remaining=int(remaining)
+    while remaining:
+      r=sys.stdin.read(remaining)
+      if r:
+        queryString+=r
+        remaining-=len(r)
+      else:
+        break
+else:
+  try:
+    queryString=os.environ.get('REQUEST_URI','').split('?',1)[1]
+  except:
+    pass
+  
+# analyse arguments
+cgiArgs=[]
+for i in queryString.split('&'):
+  if i:
+    r=i.split('=',1)
+    if len(r)==2:
+      cgiArgs.append((r[0],r[1]))
+    else:
+      cgiArgs.append((r[0],''))
+
+# finish header (insert \r before \n)
+sys.stdout.write('Content-Type: text/html\r\n')
+sys.stdout.write('\r\n')
+
+# then produce content
+sys.stdout.write('<!DOCTYPE html>\n')
+sys.stdout.write('<html><head>\n')
+sys.stdout.write('<meta charset="utf-8">\n')
+sys.stdout.write('</head><body>\n')
+sys.stdout.write('<h2>Query Properties</h2>\n')
+sys.stdout.write('<p>[<a href="/">home</a>]</p>\n')
+sys.stdout.write('<hr>\n')
+sys.stdout.write('<p>Interesting environment variables:</p>\n')
+sys.stdout.write('<p><ul>\n')
+for i in ['REQUEST_METHOD','REQUEST_URI','CONTENT_LENGTH']:
+  sys.stdout.write('<li>%s=<tt>%s</tt></li>\n'%(i,os.environ.get(i,'')))
+sys.stdout.write('</ul></p>\n')
+sys.stdout.write('<hr>\n')
+sys.stdout.write('<p>Received arguments: <tt>%s</tt></p>\n'%queryString)
+sys.stdout.write('<p><ul>\n')
+for i in cgiArgs:
+  sys.stdout.write('<li>%s: <tt>%s</tt></li>\n'%i)
+sys.stdout.write('</ul></p>\n')
+sys.stdout.write('<hr>\n')
+sys.stdout.write('</body></html>\n')
+
+#-----------------------------------------------------------------------------

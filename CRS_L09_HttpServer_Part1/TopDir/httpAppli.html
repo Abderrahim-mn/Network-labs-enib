@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<script>
+window.APPLI={};
+
+APPLI.log=function(msg)
+{
+  if(!APPLI.logArea)
+  {
+    APPLI.logArea=document.getElementById('log');
+  }
+  if(msg==null)
+  {
+    APPLI.logArea.textContent='';
+  }
+  else
+  {
+    APPLI.logArea.textContent+=msg+'\n';
+  }
+};
+
+APPLI.hton_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    view.setInt32(i*4, values[i], false);
+  }
+};
+
+APPLI.ntoh_i32Array=function(values)
+{
+  var view=new DataView(values.buffer);
+  for(var i=0; i<values.length; ++i)
+  {
+    values[i]=view.getInt32(i*4, false);
+  }
+};
+
+APPLI.command=function(name)
+{
+  if(name=='clear')
+  {
+    APPLI.log(null);
+  }
+  else if(name=='txt')
+  {
+    APPLI.txtReq.open('POST', '/txt', true)
+    APPLI.txtReq.send('text button clicked');
+  }
+  else if(name=='bin')
+  {
+    var values=new Int32Array(5);
+    for(var i=0; i<values.length; ++i)
+    {
+      values[i]=10*(i+1);
+    }
+    APPLI.hton_i32Array(values);
+    APPLI.binReq.open('POST', '/bin', true)
+    APPLI.binReq.send(values);
+  }
+};
+
+APPLI.on_txt_http_reply=function(evt)
+{
+  APPLI.log('http_txt: <'+APPLI.txtReq.responseText+'>');
+};
+
+APPLI.on_bin_http_reply=function(evt)
+{
+  var values=new Int32Array(APPLI.binReq.response);
+  APPLI.ntoh_i32Array(values);
+  var msg='http_bin:';
+  for(var i=0; i<values.length; ++i)
+  {
+    msg+=' '+values[i];
+  }
+  APPLI.log(msg);
+};
+
+window.onload=function(evt)
+{
+  // prepare textual communication channel
+  APPLI.txtReq=new XMLHttpRequest();
+  APPLI.txtReq.onload=APPLI.on_txt_http_reply;
+  // prepare binary communication channel
+  APPLI.binReq=new XMLHttpRequest();
+  APPLI.binReq.responseType='arraybuffer';
+  APPLI.binReq.onload=APPLI.on_bin_http_reply;
+  // start communication
+  APPLI.log('START');
+  APPLI.txtReq.open('POST', '/txt', true)
+  APPLI.txtReq.send('Hello from HTTP client!');
+};
+</script>
+</head><body>
+<h2>HTTP application page</h2>
+<p>[<a href="/">home</a>]</p>
+<hr>
+<p><b>Commands:</b></p>
+<p>
+<button onclick="APPLI.command('clear');">&nbsp;clear&nbsp;</button>
+&mdash;
+<button onclick="APPLI.command('txt');">&nbsp;txt&nbsp;</button>
+&mdash;
+<button onclick="APPLI.command('bin');">&nbsp;bin&nbsp;</button></p>
+<hr>
+<p><b>Log:</b></p>
+<p><pre id="log"></pre></p>
+<hr>
+</body></html>

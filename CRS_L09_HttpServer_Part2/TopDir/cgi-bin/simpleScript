@@ -1,0 +1,36 @@
+#!/bin/bash
+#-----------------------------------------------------------------------------
+
+if [ `uname` = "Darwin" ] ; then
+  echo_e="echo"
+  ps_axf="ps ax"
+else
+  echo_e="echo -e"
+  ps_axf="ps axf"
+fi
+
+# finish header (insert \r before \n)
+${echo_e} 'Content-Type: text/html\r'
+${echo_e} '\r'
+
+# then produce content
+echo '<!DOCTYPE html>'
+echo '<html><head>'
+echo '<meta charset="utf-8">'
+echo '</head><body>'
+echo '<h2>Simple Script</h2>'
+echo '<p>[<a href="/">home</a>]</p>'
+echo '<hr>'
+echo '<p><b>Current date:</b></p>'
+echo '<p><pre>'
+date
+echo '</pre></p>'
+echo '<hr>'
+echo '<p><b>Current process list:</b></p>'
+echo '<p><pre>'
+${ps_axf} | sed -e 's/</\&lt;/g'
+echo '</pre></p>'
+echo '<hr>'
+echo '</body></html>'
+
+#-----------------------------------------------------------------------------

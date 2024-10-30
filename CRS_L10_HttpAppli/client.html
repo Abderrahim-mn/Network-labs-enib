@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+"use strict";
+
+window.APPLI={};
+
+APPLI.action=function(act)
+{
+  if(APPLI.session_!=0)
+  {
+    if(act=='me')
+    {
+      APPLI.to_server(APPLI.session_+'|name|'+
+                      APPLI.me_.value);
+    }
+    else if(act=='say')
+    {
+      if(APPLI.name_!='')
+      {
+        APPLI.to_server(APPLI.session_+'|say|'+
+                        APPLI.to_.value+'|'+APPLI.say_.value);
+      }
+    }
+  }
+};
+
+APPLI.ping=function()
+{
+  APPLI.to_server(APPLI.session_+'|ping');
+  APPLI.ping_id_=window.setTimeout(APPLI.ping, 2000);
+};
+
+APPLI.on_channel_open=function()
+{
+  if(APPLI.session_==0)
+  {
+    APPLI.to_server(APPLI.session_+'|session');
+  }
+};
+
+APPLI.on_server_reply=function(reply)
+{
+  var lines=reply.split('\n');
+  for(var l=0; l<lines.length; ++l)
+  {
+    var fields=lines[l].split('|', 3);
+    if(fields[0]=='SET')
+    {
+      if(fields[1]=='session')
+      {
+        APPLI.session_=parseInt(fields[2]);
+        APPLI.me_.disabled=false;
+        APPLI.to_.disabled=false;
+        APPLI.ping();
+      }
+      else if(fields[1]=='name')
+      {
+        APPLI.name_=fields[2]
+        APPLI.me_.value=APPLI.name_;
+        APPLI.say_.disabled=false;
+        APPLI.clear_.disabled=false;
+      }
+      else if(fields[1]=='people')
+      {
+        if(APPLI.people_!=fields[2])
+        {
+          APPLI.people_=fields[2];
+          var last_index=APPLI.to_.selectedIndex;
+          var last_text=APPLI.to_.options[last_index].text;
+          while(APPLI.to_.length>0)
+          {
+            APPLI.to_.remove(APPLI.to_.length-1);
+          }
+          var people=[''].concat(APPLI.people_.split(' '));
+          var new_index=0;
+          for(var i=0; i<people.length; ++i)
+          {
+            var option=document.createElement("option");
+            option.text=people[i];
+            APPLI.to_.add(option);
+            if(people[i]==last_text)
+            {
+              new_index=i;
+            }
+          }
+          APPLI.to_.selectedIndex=new_index;
+        }
+      }
+    }
+    else if(fields[0]=='MSG')
+    {
+      var fields=lines[l].split('|', 4);
+      var color=fields[1]==APPLI.name_ ? 'lightgreen' : 'white';
+      APPLI.log('&#128068;<span style="color: '+color+'"><b>{'
+                +fields[1]+'&nbsp;&rarr;&nbsp;'+fields[2]+'}</b> '
+                +fields[3]+'</span>');
+    }
+    else if(fields[0]=='ERR')
+    {
+      APPLI.log('&#9940;&nbsp;<span style="color: red"><b>'
+                +fields[1]+'</b></span>');
+    }
+    else if(fields[0]=='INFO')
+    {
+      APPLI.log('&#128161;&nbsp;<span style="color: yellow">'
+                +fields[1]+'</span>');
+    }
+    else
+    {
+      APPLI.log('&#9940;&nbsp;<span style="color: red"><b>??? '
+                +lines[l]+' ???</b></span>');
+    }
+  }
+};
+
+//----------------------------------------------------------------------------
+
+APPLI.on_txt_http_reply=function(evt)
+{
+  var reply=APPLI.http_req_.responseText;
+  if(reply.length)
+  {
+    APPLI.on_server_reply(reply);
+  }
+};
+
+APPLI.on_ws_message=function(evt)
+{
+  var reply=evt.data;
+  if(reply.length)
+  {
+    APPLI.on_server_reply(reply);
+  }
+};
+
+APPLI.setup_channel=function()
+{
+  // ...{3}...
+  // Set up « APPLI.http_req_ » as an « XMLHttpRequest ».
+  // Replies should be handled by « APPLI.on_txt_http_reply ».
+  // Call « APPLI.on_channel_open() ».
+
+  // ...{4}...
+  // Get rid of « APPLI.http_req_ » (comment the previous code)
+  // and set up « APPLI.ws_ » as a « WebSocket » able to reach
+  // « proto+'//'+host+':'+port+'/channel' »
+  // Replies should be handled by « APPLI.on_ws_message ».
+  // When this connection is open, call « APPLI.on_channel_open() ».
+  var proto=window.location.protocol=='https:' ? 'wss:' : 'ws:';
+  var host=window.location.hostname;
+  var port=window.location.port;
+
+};
+
+APPLI.to_server=function(msg)
+{
+  if(APPLI.http_req_)
+  {
+    // ...{3}...
+    // Send « msg » with a « POST /msg » request via « APPLI.http_req_ ».
+  }
+  else if(APPLI.ws_)
+  {
+    // ...{4}...
+    // Send « msg » via « APPLI.ws_ ».
+  }
+};
+
+//----------------------------------------------------------------------------
+
+APPLI.setup_body=function()
+{
+  APPLI.top_div_=document.getElementById("top_div");
+  APPLI.log_div_=document.getElementById("log_div");
+  APPLI.log_=document.getElementById("log");
+  APPLI.me_=document.getElementById('me');
+  APPLI.to_=document.getElementById('to');
+  APPLI.say_=document.getElementById('say');
+  APPLI.clear_=document.getElementById('clear');
+  APPLI.me_.disabled=true;
+  APPLI.to_.disabled=true;
+  APPLI.say_.disabled=true;
+  APPLI.clear_.disabled=true;
+  APPLI.margin_=4;
+  APPLI.border_=2;
+  APPLI.padding_=4;
+  APPLI.color_="lightgrey";
+  APPLI.bg_color_="black";
+  document.body.style["margin"]="0px";
+  document.body.style["border"]="0px";
+  document.body.style["padding"]="0px";
+  document.body.style["background-color"]=APPLI.bg_color_;
+  document.body.style["color"]=APPLI.color_;
+  document.body.style["font-family"]="sans-serif";
+  var divs=[APPLI.top_div_, APPLI.log_div_];
+  for(var i=0; i<divs.length; ++i)
+  {
+    divs[i].style["margin"]=APPLI.margin_+"px";
+    divs[i].style["border"]=APPLI.border_+"px solid "+APPLI.color_;
+    divs[i].style["padding"]=APPLI.padding_+"px";
+  }
+  window.onresize(null);
+  APPLI.log_div_.style["overflow"]="auto";
+  APPLI.log_div_.scrollTop=APPLI.log_div_.scrollHeight;
+};
+
+APPLI.log=function(msg)
+{
+  try
+  {
+    var height=APPLI.log_div_.offsetHeight-2.0*APPLI.border_;
+    var bottom=(APPLI.log_div_.scrollTop+height)
+               >=APPLI.log_div_.scrollHeight-10;
+    APPLI.log_.innerHTML=msg==null ? '' : APPLI.log_.innerHTML+msg+'<br>';
+    if(bottom)
+    {
+      APPLI.log_div_.scrollTop=APPLI.log_div_.scrollHeight;
+    }
+  }
+  catch(e)
+  {
+    console.log(msg);
+  }
+};
+
+window.onresize=function(evt)
+{
+  var available=Math.floor(window.innerHeight);
+  available-=Math.ceil(APPLI.top_div_.offsetHeight);
+  available-=3*APPLI.margin_; // 3 margins around 2 divs
+  APPLI.log_div_.style["height"]=
+    Math.max(20, available-2*(APPLI.border_+APPLI.padding_))+"px";
+  return true;
+};
+
+window.onload=function(evt)
+{
+  // APPLI.log('~~~~ entering onload() ~~~~');
+  APPLI.setup_body();
+  APPLI.session_=0;
+  APPLI.name_='';
+  APPLI.people_='';
+  APPLI.ping_id_=0;
+  APPLI.http_req_=null;
+  APPLI.ws_=null;
+  APPLI.setup_channel();
+  APPLI.me_.onkeyup=function(evt)
+  {
+    if(evt.keyCode==13) // only react to [Enter] key
+    {
+      APPLI.action('me');
+    }
+  };
+  APPLI.say_.onkeyup=function(evt)
+  {
+    if(evt.keyCode==13) // only react to [Enter] key
+    {
+      APPLI.action('say');
+    }
+  };
+  APPLI.clear_.onclick=function(evt)
+  {
+    APPLI.log(null);
+  };
+  // APPLI.log('~~~~ leaving onload() ~~~~');
+};
+
+window.onbeforeunload=function(evt)
+{
+  APPLI.to_server(APPLI.session_+'|quit');
+};
+
+</script>
+<title>Simple Application</title>
+</head><body>
+<div id="top_div">
+  <table><tr><td>
+    <b>Me:</b>
+  </td><td>
+    <input id="me" type="text" size="8">
+    &nbsp;<b>To:</b>
+    <select id="to">
+      <option></option>
+    </select>
+    &nbsp;&nbsp;&nbsp;&nbsp;<button id="clear">Clear</button>
+  </td></tr><tr><td>
+    <b>Say:</b>
+  </td><td>
+    <input id="say" type="text" size="40">
+  </td></tr></table>
+</div>
+<div id="log_div">
+  <div id="log"></div>
+</div>
+</body></html>
